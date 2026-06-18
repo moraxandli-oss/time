@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<!-- saved from url=(0037)https://timestamp-printer.vercel.app/ -->
+<html lang="zh" data-theme="light"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ff6a1a">
+<title>时间戳打印机</title>
+<style>
+  /* ============ Theme tokens ============ */
+  :root {
+    --orange: #ff6a1a;
+    --orange-600: #e55a0e;
+    --orange-100: #ffe6d4;
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --ink: #1d2129;
+    --ink-2: #4b5563;
+    --muted: #8a94a4;
+    --line: #e3e6eb;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --shadow: 0 2px 8px rgba(15, 23, 42, .06), 0 12px 32px rgba(15, 23, 42, .06);
+    --radius: 14px;
+    --radius-sm: 10px;
+    --tap: 48px;
+  }
+  [data-theme="dark"] {
+    --bg: #0f1115;
+    --surface: #181b22;
+    --ink: #f3f5f9;
+    --ink-2: #c7ccd5;
+    --muted: #8a94a4;
+    --line: #2a2f3a;
+    --shadow: 0 2px 8px rgba(0,0,0,.4), 0 12px 32px rgba(0,0,0,.45);
+  }
+
+  * { box-sizing: border-box; }
+  /* Ensure [hidden] always wins over component display rules (.row / .center use flex) */
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ============ Header ============ */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 22px; font-weight: 700; letter-spacing: -.01em;
+  }
+  .brand .logo {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--orange), #ff8a4a);
+    display: grid; place-items: center; color: #fff; font-weight: 800;
+    box-shadow: var(--shadow);
+  }
+  .brand #statusDot { margin-left: 8px; }
+  .brand #statusText {
+    font-size: 13px; font-weight: 600; color: var(--ink-2);
+  }
+  .header-spacer { flex: 1; }
+
+  .seg {
+    display: inline-flex; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 999px; padding: 4px;
+    box-shadow: var(--shadow);
+  }
+  .seg button {
+    border: 0; background: transparent; color: var(--ink-2);
+    min-height: 36px; padding: 0 14px; border-radius: 999px;
+    font-weight: 600; font-size: 14px; cursor: pointer;
+  }
+  .seg button.is-active {
+    background: var(--orange); color: #fff;
+  }
+
+  .select-wrap {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+  }
+  .select-wrap::after {
+    content: "▾"; position: absolute; right: 12px; top: 50%;
+    transform: translateY(-50%); color: var(--muted); pointer-events: none;
+  }
+  .select-wrap select {
+    appearance: none; -webkit-appearance: none;
+    background: transparent; border: 0; color: var(--ink);
+    padding: 0 34px 0 14px; min-height: 40px; font-size: 14px; font-weight: 600;
+    border-radius: 10px;
+  }
+
+  .icon-btn {
+    width: 40px; height: 40px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--surface);
+    color: var(--ink-2); cursor: pointer; box-shadow: var(--shadow);
+    display: grid; place-items: center;
+  }
+  .icon-btn:hover { color: var(--ink); }
+
+  /* ============ Layout ============ */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 1.05fr;
+    gap: 16px;
+  }
+  @media (max-width: 880px) {
+    .main { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px;
+  }
+  .card h2 {
+    margin: 0 0 12px; font-size: 13px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+  }
+
+  /* ============ Form rows ============ */
+  .row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .row > label {
+    flex: 0 0 130px; color: var(--ink-2); font-weight: 600; font-size: 14px;
+  }
+  .row > .control { flex: 1; min-width: 0; display: flex; gap: 8px; }
+  .row > .control > .select-wrap { flex: 1; }
+  .row > .control > .select-wrap select { width: 100%; }
+
+  .num-input {
+    display: inline-flex; align-items: stretch;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 10px; overflow: hidden; box-shadow: var(--shadow);
+    min-height: var(--tap);
+  }
+  .num-input button {
+    border: 0; background: transparent; color: var(--ink);
+    width: 44px; font-size: 22px; cursor: pointer;
+  }
+  .num-input button:hover { background: var(--bg); }
+  .num-input input {
+    width: 64px; border: 0; background: transparent;
+    text-align: center; font-size: 18px; font-weight: 700; color: var(--ink);
+    outline: none;
+  }
+
+  .btn {
+    appearance: none; border: 0; cursor: pointer;
+    min-height: var(--tap); padding: 0 18px;
+    font-size: 15px; font-weight: 700; border-radius: 12px;
+    box-shadow: var(--shadow);
+  }
+  .btn-primary {
+    background: var(--orange); color: #fff;
+    font-size: 18px; padding: 0 28px;
+  }
+  .btn-primary:hover { background: var(--orange-600); }
+  .btn-primary:active { transform: translateY(1px); }
+  .btn-secondary { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+  .btn-ghost { background: transparent; box-shadow: none; color: var(--ink-2); }
+  .btn-warn { background: #fff3ec; color: var(--orange-600); border: 1px solid var(--orange-100); }
+  .btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+  .actions .btn-primary { flex: 1; min-width: 160px; }
+
+  /* ============ Preview ============ */
+  .preview-card { display: flex; flex-direction: column; gap: 14px; }
+  .preview-stage {
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 18px;
+    display: grid; place-items: center;
+    border: 1px dashed var(--line);
+    min-height: 360px;
+  }
+  .label {
+    background: #fff;
+    color: #000;
+    width: 100%;
+    max-width: 460px;
+    aspect-ratio: 6 / 4;     /* 6 wide × 4 tall — landscape thermal */
+    border-radius: 8px;
+    border: 1px solid #d9dde4;
+    padding: 4% 5%;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    position: relative;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .08);
+  }
+  .label.mini { max-width: 320px; }
+  .label .op-type {
+    display: flex; font-weight: 800;
+    font-size: clamp(18px, 4.5cqi, 30px);
+    container-type: inline-size;
+  }
+  .label .op-type span { flex: 1; }
+  .label .op-type .op-left   { text-align: left; }
+  .label .op-type .op-mid    { text-align: center; }
+  .label .op-type .op-right  { text-align: right; }
+  .label .center {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    line-height: 1.0;
+  }
+  .label .date,
+  .label .time {
+    font-weight: 800;
+    font-size: clamp(48px, 18cqi, 110px);
+    letter-spacing: .02em;
+  }
+  .label.mini .date,
+  .label.mini .time { font-size: clamp(38px, 14cqi, 80px); }
+  .label .group {
+    text-align: right; font-weight: 800;
+    font-size: clamp(16px, 4.5cqi, 26px);
+  }
+  /* Custom-content center: two parallel lines become the main content
+     (the big date/time is removed for Site + custom). */
+  .label .center.custom { gap: 4cqi; }
+  .label .cust-line {
+    font-weight: 800; text-align: center; line-height: 1.15;
+    font-size: clamp(20px, 8.5cqi, 48px); letter-spacing: .01em;
+  }
+  .label.mini .cust-line { font-size: clamp(16px, 6.5cqi, 36px); }
+  /* Large "G" watermark in the bottom-left corner (Site category only) */
+  .label .watermark {
+    position: absolute; left: 4%; bottom: 5%;
+    font-weight: 900; line-height: .82;
+    font-size: clamp(70px, 34cqi, 200px);
+    color: rgba(0, 0, 0, .15);
+    pointer-events: none; user-select: none;
+  }
+  .label { container-type: inline-size; }
+
+  /* ============ Custom content row ============ */
+  .row-custom .control-custom { align-items: center; flex-wrap: wrap; }
+  .row-custom .custom-enable { flex: 0 0 auto; display: flex; align-items: center; }
+  .row-custom .custom-enable input { width: 20px; height: 20px; cursor: pointer; }
+  .row-custom .custom-fields {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 0;
+  }
+  .row-custom .custom-fields.is-disabled { opacity: .45; }
+  .row-custom #customText {
+    width: 84px; min-height: 40px;
+    border: 1px solid var(--line); border-radius: 10px;
+    background: var(--surface); color: var(--ink);
+    padding: 0 10px; font-size: 14px; font-weight: 600;
+    box-shadow: var(--shadow);
+  }
+  .row-custom .select-wrap.sw-sm { box-shadow: none; }
+  .row-custom .select-wrap.sw-sm select {
+    min-height: 40px; padding: 0 22px 0 8px; font-size: 14px;
+  }
+  .row-custom .select-wrap.sw-sm::after { right: 6px; }
+  .row-custom .sep { color: var(--ink-2); font-weight: 700; }
+
+  /* ============ Activity log ============ */
+  .log-card details summary {
+    cursor: pointer; list-style: none;
+    display: flex; align-items: center; gap: 8px;
+    color: var(--muted); font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; font-size: 13px;
+  }
+  .log-card details summary::-webkit-details-marker { display: none; }
+  .log-card details summary .chev { transition: transform .15s ease; }
+  .log-card details[open] summary .chev { transform: rotate(90deg); }
+  .log-list {
+    margin-top: 12px;
+    max-height: 220px; overflow-y: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px; color: var(--ink-2);
+    background: var(--bg); border-radius: 10px; padding: 10px 12px;
+    border: 1px solid var(--line);
+  }
+  .log-list .entry { padding: 4px 0; border-bottom: 1px dashed var(--line); }
+  .log-list .entry:last-child { border-bottom: 0; }
+  .log-list .entry.empty { color: var(--muted); }
+
+  /* ============ Footer status ============ */
+  .footer {
+    margin-top: auto;
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    font-size: 13px; color: var(--ink-2);
+  }
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--muted);
+    box-shadow: 0 0 0 4px rgba(0,0,0,.04);
+  }
+  .dot.ready { background: var(--green); box-shadow: 0 0 0 4px rgba(34,197,94,.18); }
+  .dot.connecting { background: var(--amber); box-shadow: 0 0 0 4px rgba(245,158,11,.2); animation: pulse 1.2s ease-in-out infinite; }
+  .dot.failed { background: var(--red); box-shadow: 0 0 0 4px rgba(239,68,68,.2); }
+  @keyframes pulse { 50% { transform: scale(1.25); } }
+  .footer .ver { margin-left: auto; color: var(--muted); }
+
+  /* ============ Mini (simplified) mode ============ */
+  /* Mini repurposes the size toggle as a "simple repeat-print" view:
+     hide all the warehouse selectors and show only Copies + Print,
+     with a compact preview underneath. The print layout is unaffected. */
+  .app.size-mini .brand span[data-i18n="appTitle"] { display: none; }
+  .app.size-mini #miniClock { display: inline; }
+  .app.size-mini #langSelect,
+  .app.size-mini #themeToggle,
+  .app.size-mini .log-card { display: none; }
+  .app.size-mini .main { grid-template-columns: 1fr; }
+  .app.size-mini .preview-card h2 { display: none; }
+  .app.size-mini .preview-stage { min-height: 220px; padding: 12px; }
+  .app.size-mini .preview-stage .label { max-width: 360px; }
+
+  .app.size-mini .controls-card .row.row-printer,
+  .app.size-mini .controls-card .row.row-orgcategory,
+  .app.size-mini .controls-card .row.row-opgroup,
+  .app.size-mini .controls-card .row.row-optype,
+  .app.size-mini .controls-card .row.row-custom,
+  .app.size-mini .controls-card #cancelBtn { display: none; }
+
+  /* Make the Copies + Print row dominant in Mini */
+  .app.size-mini .controls-card .row.row-copies {
+    align-items: stretch;
+    gap: 16px;
+  }
+  .app.size-mini .controls-card .row.row-copies > label {
+    flex: 0 0 auto;
+    font-size: 18px;
+    display: flex; align-items: center;
+  }
+  .app.size-mini .controls-card .row.row-copies > .control {
+    align-items: stretch;
+  }
+  .app.size-mini .controls-card .num-input { min-height: 64px; }
+  .app.size-mini .controls-card .num-input input { font-size: 22px; }
+  .app.size-mini .controls-card .actions { margin-top: 0; }
+  .app.size-mini .controls-card .actions .btn-primary {
+    min-height: 72px; font-size: 26px; flex: 1;
+  }
+  .app.size-mini #miniClock {
+    font-weight: 800; font-size: 22px; letter-spacing: .02em;
+  }
+
+  #miniClock { display: none; }
+
+  /* ============ Mobile tweaks ============ */
+  @media (max-width: 720px) {
+    .app { padding: 12px; gap: 12px; }
+    .brand { font-size: 18px; }
+    .row { flex-direction: column; align-items: stretch; gap: 6px; }
+    .row > label { flex: none; }
+    .row > .control { flex-direction: row; }
+    .num-input { width: 100%; }
+    .num-input input { flex: 1; width: auto; }
+    .actions .btn-primary { font-size: 20px; min-height: 56px; }
+    .preview-stage { min-height: 280px; }
+  }
+
+  /* ============ Print: ONLY label visible ============ */
+  /* Hidden on screen; revealed by @media print below.
+     The @page size itself is injected dynamically in JS based on state.size
+     so mini labels print on 4×3 pages and regular labels on 6×4. */
+  .print-area { display: none; }
+
+  @media print {
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #fff !important;
+      color: #000 !important;
+      height: auto !important;
+      min-height: 0 !important;
+      width: auto !important;
+      overflow: visible !important;
+    }
+    body { display: block !important; }
+
+    .app {
+      display: block !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      min-height: 0 !important;
+      max-width: none !important;
+      gap: 0 !important;
+    }
+
+    /* Hide everything in .app except the print payload */
+    .app > *:not(.print-area) { display: none !important; }
+    /* And hide any siblings of .app */
+    body > *:not(.app) { display: none !important; }
+
+    .print-area {
+      display: block !important;
+      position: static !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      width: auto !important;
+      height: auto !important;
+      background: #fff !important;
+    }
+
+    .print-area .label {
+      display: grid !important;
+      grid-template-rows: auto 1fr auto !important;
+      width: 6in !important;
+      height: 4in !important;
+      max-width: none !important;
+      aspect-ratio: auto !important;
+      margin: 0 !important;
+      padding: 0.25in 0.35in !important;
+      background: #fff !important;
+      color: #000 !important;
+      box-shadow: none !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      overflow: hidden !important;
+      page-break-after: always !important;
+      break-after: page !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    .print-area .label.mini {
+      width: 4in !important;
+      height: 3in !important;
+    }
+    .print-area .label:last-child {
+      page-break-after: auto !important;
+      break-after: auto !important;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="app size-regular">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="brand">
+      <div class="logo">T</div>
+      <span data-i18n="appTitle">时间戳打印机</span>
+      <span id="statusDot" class="dot ready"></span>
+      <span id="statusText" data-i18n="ready">就绪</span>
+      <span id="miniClock" aria-live="polite">06/18  13:40</span>
+    </div>
+    <div class="header-spacer"></div>
+
+    <div class="seg" role="tablist" aria-label="Label size">
+      <button id="sizeRegular" class="is-active" data-i18n="sizeRegular">标准</button>
+      <button id="sizeMini" data-i18n="sizeMini">迷你</button>
+    </div>
+
+    <div class="select-wrap">
+      <select id="langSelect" aria-label="Language">
+        <option value="en">English</option>
+        <option value="cn">中文</option>
+        <option value="es">Español</option>
+      </select>
+    </div>
+
+    <button id="themeToggle" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">◐</button>
+  </header>
+
+  <!-- Main -->
+  <main class="main">
+    <!-- Controls -->
+    <section class="card controls-card">
+      <h2 data-i18n="controls">控制</h2>
+
+      <div class="row row-printer">
+        <label for="printerSelect" data-i18n="printer">打印机</label>
+        <div class="control">
+          <div class="select-wrap">
+            <select id="printerSelect"><option value="default">默认系统打印机</option><option value="pdf">另存为 PDF</option></select>
+          </div>
+          <button id="refreshPrinters" class="btn btn-warn" data-i18n="refresh">刷新</button>
+        </div>
+      </div>
+
+      <div class="row row-copies">
+        <label for="copies" data-i18n="copies">份数</label>
+        <div class="control">
+          <div class="num-input" role="group" aria-label="Copies">
+            <button type="button" id="copiesMinus" aria-label="Decrease">−</button>
+            <input id="copies" type="number" min="1" max="25" value="1" inputmode="numeric">
+            <button type="button" id="copiesPlus" aria-label="Increase">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row row-orgcategory">
+        <label for="orgCategory" data-i18n="orgCategory">组织类别</label>
+        <div class="control">
+          <div class="select-wrap">
+            <select id="orgCategory"><option value="center">中心</option><option value="site">站点</option></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="row row-opgroup">
+        <label for="opGroup" data-i18n="opGroup">操作组</label>
+        <div class="control">
+          <div class="select-wrap">
+            <select id="opGroup"><option value="ATL.G">ATL.G</option><option value="CNO.G">CNO.G</option><option value="DFW.G">DFW.G</option><option value="EWR.G">EWR.G</option><option value="ORD.G">ORD.G</option><option value="SAV.G">SAV.G</option><option value="SFO.G">SFO.G</option></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="row row-optype">
+        <label for="opType" data-i18n="opType">操作类型</label>
+        <div class="control">
+          <div class="select-wrap">
+            <select id="opType"><option value="None">无(空白)</option><option value="Inbound">入库</option><option value="Complete">完成</option><option value="Outbound">出库</option></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="row row-custom" id="rowCustom" hidden="">
+        <label for="customText" data-i18n="customContent">自定义内容</label>
+        <div class="control control-custom">
+          <label class="custom-enable">
+            <input type="checkbox" id="customEnable" aria-label="Enable custom content">
+          </label>
+          <div class="custom-fields is-disabled" id="customFields">
+            <input id="customText" type="text" placeholder="注释" disabled="">
+            <span class="sep">:</span>
+            <div class="select-wrap sw-sm"><select id="customMonth" disabled=""><option value="1">01</option><option value="2">02</option><option value="3">03</option><option value="4">04</option><option value="5">05</option><option value="6">06</option><option value="7">07</option><option value="8">08</option><option value="9">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select></div>
+            <span class="sep">/</span>
+            <div class="select-wrap sw-sm"><select id="customDay" disabled=""><option value="1">01</option><option value="2">02</option><option value="3">03</option><option value="4">04</option><option value="5">05</option><option value="6">06</option><option value="7">07</option><option value="8">08</option><option value="9">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option></select></div>
+            <div class="select-wrap sw-sm"><select id="customHour" disabled=""><option value="0">00</option><option value="1">01</option><option value="2">02</option><option value="3">03</option><option value="4">04</option><option value="5">05</option><option value="6">06</option><option value="7">07</option><option value="8">08</option><option value="9">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option></select></div>
+            <span class="sep">:</span>
+            <div class="select-wrap sw-sm"><select id="customMinute" disabled=""><option value="0">00</option><option value="1">01</option><option value="2">02</option><option value="3">03</option><option value="4">04</option><option value="5">05</option><option value="6">06</option><option value="7">07</option><option value="8">08</option><option value="9">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option><option value="32">32</option><option value="33">33</option><option value="34">34</option><option value="35">35</option><option value="36">36</option><option value="37">37</option><option value="38">38</option><option value="39">39</option><option value="40">40</option><option value="41">41</option><option value="42">42</option><option value="43">43</option><option value="44">44</option><option value="45">45</option><option value="46">46</option><option value="47">47</option><option value="48">48</option><option value="49">49</option><option value="50">50</option><option value="51">51</option><option value="52">52</option><option value="53">53</option><option value="54">54</option><option value="55">55</option><option value="56">56</option><option value="57">57</option><option value="58">58</option><option value="59">59</option></select></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="printBtn" class="btn btn-primary" data-i18n="print">打印</button>
+        <button id="cancelBtn" class="btn btn-secondary" data-i18n="cancel">取消队列</button>
+      </div>
+    </section>
+
+    <!-- Preview -->
+    <section class="card preview-card">
+      <h2 data-i18n="preview">实时预览</h2>
+      <div class="preview-stage">
+        <div id="previewLabel" class="label" aria-live="polite">
+          <div class="op-type">
+            <span class="op-left" id="opLeft"></span>
+            <span class="op-mid" id="opMid"></span>
+            <span class="op-right" id="opRight"></span>
+          </div>
+          <div class="center" id="lblCenter">
+            <div class="date" id="lblDate">06/18</div>
+            <div class="time" id="lblTime">13:40</div>
+          </div>
+          <div class="center custom" id="lblCustom" hidden="">
+            <div class="cust-line" id="custLine1"></div>
+            <div class="cust-line" id="custLine2"></div>
+          </div>
+          <div class="group" id="lblGroup">CNO.G</div>
+          <div class="watermark" id="lblWatermark" hidden="">G</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Activity log -->
+  <section class="card log-card">
+    <details id="logDetails" open="">
+      <summary>
+        <span class="chev">▸</span>
+        <span data-i18n="activity">操作日志</span>
+      </summary>
+      <div id="logList" class="log-list"><div class="entry">[13:32:38] 打印机已加载</div></div>
+    </details>
+  </section>
+
+  <!-- Footer status -->
+  <footer class="footer">
+    <span data-i18n="copyright">© 2026 · GOFO</span>
+    <span class="ver" id="verText">v1.1</span>
+  </footer>
+
+  <!-- Hidden print payload, populated right before window.print() -->
+  <div id="printArea" class="print-area"></div>
+
+</div>
+
+<script src="./时间戳打印机_files/html2pdf.bundle.min.js"></script>
+<script>
+/* ====================== CONFIG ====================== */
+const CONFIG = {
+  orgCategories: [
+    { value: "center", labelKey: "orgCenter" },
+    { value: "site",   labelKey: "orgSite" }
+  ],
+  operationGroupsByCategory: {
+    center: ["CNO.G","SFO.G","EWR.G","ORD.G","ATL.G","DWF.G","SAV.G"],
+    site: ["NJ070","LA917","SF945", "ST958","AT303","DF750","CH600"]
+  },
+  operationTypesByCategory: {
+    center: ["None", "Inbound", "Complete", "Outbound"],
+    site:   ["None", "Arrived", "Stranded", "Returned"]
+  },
+  // Which of the three label columns each op type occupies (layout unchanged).
+  opTypePosition: {
+    Inbound: "left", Complete: "mid", Outbound: "right",
+    Arrived: "left", Stranded: "mid", Returned: "right"
+  },
+  defaultCopies: 1,
+  appVersion: "1.1"
+};
+
+/* ====================== i18n ======================== */
+const I18N = {
+  en: {
+    appTitle: "Timestamp Printer", sizeRegular: "Regular", sizeMini: "Mini",
+    controls: "Controls", printer: "Printer", refresh: "Refresh",
+    copies: "Copies", orgCategory: "Organization Category",
+    orgCenter: "Center", orgSite: "Site",
+    opGroup: "Operation Group", opType: "Operation Type",
+    customContent: "Custom Content", printTimeLabel: "Print Time", customPlaceholder: "Note",
+    print: "Print", cancel: "Cancel Queue", preview: "Live Preview",
+    activity: "Activity Log", logEmpty: "No activity yet.",
+    ready: "Ready", connecting: "Connecting…", failed: "Printer unavailable",
+    none: "None", inbound: "Inbound", complete: "Complete", outbound: "Outbound",
+    arrived: "Arrived", stranded: "Stranded", returned: "Returned to Site",
+    printed: "Printed", copy: "copy", copiesWord: "copies",
+    logLoaded: "Printers loaded",
+    logSelectedPrinter: "Selected printer: {name}",
+    logCancelled: "Print queue cancelled by user.",
+    logPrinted: "Printed {n} {unit}{type} {group}",
+    printerDefault: "Default System Printer",
+    printerSavePdf: "Save as PDF",
+    copyright: "© 2026 · GOFO"
+  },
+  cn: {
+    appTitle: "时间戳打印机", sizeRegular: "标准", sizeMini: "迷你",
+    controls: "控制", printer: "打印机", refresh: "刷新",
+    copies: "份数", orgCategory: "组织类别",
+    orgCenter: "中心", orgSite: "站点",
+    opGroup: "操作组", opType: "操作类型",
+    customContent: "自定义内容", printTimeLabel: "打印时间", customPlaceholder: "注释",
+    print: "打印", cancel: "取消队列", preview: "实时预览",
+    activity: "操作日志", logEmpty: "暂无记录。",
+    ready: "就绪", connecting: "连接中…", failed: "打印机不可用",
+    none: "无(空白)", inbound: "入库", complete: "完成", outbound: "出库",
+    arrived: "新到", stranded: "滞留", returned: "退回站点",
+    printed: "已打印", copy: "份", copiesWord: "份",
+    logLoaded: "打印机已加载",
+    logSelectedPrinter: "已选择打印机:{name}",
+    logCancelled: "用户已取消打印队列。",
+    logPrinted: "已打印 {n} {unit}{type} {group}",
+    printerDefault: "默认系统打印机",
+    printerSavePdf: "另存为 PDF",
+    copyright: "© 2026 · GOFO"
+  },
+  es: {
+    appTitle: "Impresora de Marcas de Tiempo", sizeRegular: "Regular", sizeMini: "Mini",
+    controls: "Controles", printer: "Impresora", refresh: "Actualizar",
+    copies: "Copias", orgCategory: "Categoría de Organización",
+    orgCenter: "Centro", orgSite: "Sitio",
+    opGroup: "Grupo de Operación", opType: "Tipo de Operación",
+    customContent: "Contenido Personalizado", printTimeLabel: "Hora de Impresión", customPlaceholder: "Nota",
+    print: "Imprimir", cancel: "Cancelar Cola", preview: "Vista en Vivo",
+    activity: "Registro de Actividad", logEmpty: "Sin actividad aún.",
+    ready: "Listo", connecting: "Conectando…", failed: "Impresora no disponible",
+    none: "Ninguno", inbound: "Entrada", complete: "Completa", outbound: "Salida",
+    arrived: "Llegada", stranded: "Retenido", returned: "Devuelto al Sitio",
+    printed: "Impreso", copy: "copia", copiesWord: "copias",
+    logLoaded: "Impresoras cargadas",
+    logSelectedPrinter: "Impresora seleccionada: {name}",
+    logCancelled: "Cola de impresión cancelada por el usuario.",
+    logPrinted: "Impreso {n} {unit}{type} {group}",
+    printerDefault: "Impresora predeterminada del sistema",
+    printerSavePdf: "Guardar como PDF",
+    copyright: "© 2026 · GOFO"
+  }
+};
+
+/* ====================== STATE ======================= */
+const STORAGE_KEY = "timestampPrinter.settings.v1";
+const state = {
+  lang: "en",
+  size: "regular",
+  copies: CONFIG.defaultCopies,
+  orgCategory: "center",
+  opGroup: CONFIG.operationGroupsByCategory.center[0],
+  opType: "None",
+  printer: "",
+  theme: "light",
+  // Custom content (site only); date/time are prefilled with the current time at startup
+  customEnabled: false,
+  customText: "",
+  customMonth: 1, customDay: 1, customHour: 0, customMinute: 0,
+  activity: []
+};
+
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    Object.assign(state, s);
+    if (state.printer === "Default System Printer") state.printer = "default";
+    else if (state.printer === "Save as PDF") state.printer = "pdf";
+  } catch {}
+}
+function saveSettings() {
+  const { lang, size, copies, orgCategory, opGroup, opType, printer, theme, customEnabled, customText } = state;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ lang, size, copies, orgCategory, opGroup, opType, printer, theme, customEnabled, customText }));
+}
+
+/* ====================== UTIL ======================== */
+const $ = (id) => document.getElementById(id);
+const pad = (n) => String(n).padStart(2, "0");
+
+function fmtDate(d) { return `${pad(d.getMonth()+1)}/${pad(d.getDate())}`; }
+function fmtTime(d) { return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function fmtClockStamp(d) { return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
+
+function t(key) {
+  return (I18N[state.lang] && I18N[state.lang][key]) || I18N.en[key] || key;
+}
+function tf(key, vars) {
+  return t(key).replace(/\{(\w+)\}/g, (_, k) => (k in vars ? vars[k] : `{${k}}`));
+}
+function applyI18n() {
+  document.documentElement.lang = state.lang === "cn" ? "zh" : state.lang;
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const k = el.getAttribute("data-i18n");
+    el.textContent = t(k);
+  });
+  // Re-render dynamic dependents
+  populateOrgCategory();
+  populateOpType();
+  renderPrinterOptions();
+  $("customText").setAttribute("placeholder", t("customPlaceholder"));
+  renderPreview();
+  setStatus(currentStatusKey);
+}
+
+/* ====================== PRINTERS ===================== */
+/*
+ * Browsers cannot enumerate OS printers. We simulate a "list" using the
+ * Web Async Clipboard / fetch — instead we just present "Default System Printer"
+ * which is what window.print() routes to. We keep the UI shape from the desktop app.
+ */
+function listPrinters() {
+  // Stable internal values; display labels come from i18n
+  return [
+    { value: "default", labelKey: "printerDefault" },
+    { value: "pdf",     labelKey: "printerSavePdf" }
+  ];
+}
+
+function renderPrinterOptions() {
+  const sel = $("printerSelect");
+  Array.from(sel.options).forEach(opt => {
+    const item = listPrinters().find(p => p.value === opt.value);
+    if (item) opt.textContent = t(item.labelKey);
+  });
+}
+
+async function refreshPrinters({ withDelay = true } = {}) {
+  setStatus("connecting");
+  if (withDelay) await new Promise(r => setTimeout(r, 500));
+  const list = listPrinters();
+  const sel = $("printerSelect");
+  sel.innerHTML = "";
+  list.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p.value; opt.textContent = t(p.labelKey);
+    sel.appendChild(opt);
+  });
+  const values = list.map(p => p.value);
+  if (state.printer && values.includes(state.printer)) sel.value = state.printer;
+  state.printer = sel.value;
+  saveSettings();
+  setStatus("ready");
+  log(t("logLoaded"));
+}
+
+/* ====================== STATUS ======================= */
+let currentStatusKey = "ready";
+function setStatus(key) {
+  currentStatusKey = key;
+  const dot = $("statusDot");
+  const text = $("statusText");
+  dot.classList.remove("ready", "connecting", "failed");
+  dot.classList.add(key);
+  text.textContent = t(key);
+}
+
+/* ====================== LOG ========================= */
+function log(message) {
+  const ts = fmtClockStamp(new Date());
+  state.activity.unshift({ ts, message });
+  state.activity = state.activity.slice(0, 50);
+  renderLog();
+}
+function renderLog() {
+  const list = $("logList");
+  if (!state.activity.length) {
+    list.innerHTML = `<div class="entry empty">${t("logEmpty")}</div>`;
+    return;
+  }
+  list.innerHTML = state.activity
+    .map(e => `<div class="entry">[${e.ts}] ${escapeHtml(e.message)}</div>`)
+    .join("");
+}
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+/* ====================== PREVIEW ===================== */
+function renderOpTypeColumns(opType) {
+  // Position per CONFIG.opTypePosition: left / middle / right (layout unchanged).
+  const pos = CONFIG.opTypePosition[opType];
+  const label = pos ? t(opType.toLowerCase()) : "";
+  $("opLeft").textContent  = pos === "left"  ? label : "";
+  $("opMid").textContent   = pos === "mid"   ? label : "";
+  $("opRight").textContent = pos === "right" ? label : "";
+}
+// Custom content is "in effect" only for site category with the toggle enabled.
+function customActive() {
+  return state.orgCategory === "site" && state.customEnabled;
+}
+function customLine1() {
+  const cd = `${pad(state.customMonth)}/${pad(state.customDay)}`;
+  const ct = `${pad(state.customHour)}:${pad(state.customMinute)}`;
+  const txt = (state.customText || "").trim();
+  return (txt ? `${txt}: ` : "") + `${cd} ${ct}`;
+}
+function customLine2(d) {
+  return `${t("printTimeLabel")}: ${fmtDate(d)} ${fmtTime(d)}`;
+}
+function renderPreview(frozen) {
+  const d = frozen || new Date();
+  $("lblDate").textContent = fmtDate(d);
+  $("lblTime").textContent = fmtTime(d);
+  $("lblGroup").textContent = state.opGroup || "—";
+  renderOpTypeColumns(state.opType);
+
+  // Site category: show the large "G" watermark in the bottom-left corner
+  $("lblWatermark").hidden = state.orgCategory !== "site";
+
+  // Custom content: replace the big date/time with two parallel lines
+  const active = customActive();
+  $("lblCenter").hidden = active;
+  $("lblCustom").hidden = !active;
+  if (active) {
+    $("custLine1").textContent = customLine1();
+    $("custLine2").textContent = customLine2(d);
+  }
+
+  const lbl = $("previewLabel");
+  lbl.classList.toggle("mini", state.size === "mini");
+
+  // Mini mode: live date+time in the header and the browser tab title
+  const stamp = `${fmtDate(d)}  ${fmtTime(d)}`;
+  $("miniClock").textContent = stamp;
+  if (state.size === "mini") {
+    document.title = stamp;
+  } else {
+    document.title = t("appTitle");
+  }
+}
+
+/* ====================== SELECTS ===================== */
+function populateOrgCategory() {
+  const sel = $("orgCategory");
+  sel.innerHTML = "";
+  CONFIG.orgCategories.forEach(c => {
+    const o = document.createElement("option");
+    o.value = c.value; o.textContent = t(c.labelKey); sel.appendChild(o);
+  });
+  sel.value = state.orgCategory;
+}
+function populateOpGroup() {
+  const sel = $("opGroup");
+  sel.innerHTML = "";
+  const groups = CONFIG.operationGroupsByCategory[state.orgCategory] || [];
+  groups.forEach(g => {
+    const o = document.createElement("option");
+    o.value = g; o.textContent = g; sel.appendChild(o);
+  });
+  if (!groups.includes(state.opGroup)) state.opGroup = groups[0] || "";
+  sel.value = state.opGroup;
+}
+function populateOpType() {
+  const sel = $("opType");
+  sel.innerHTML = "";
+  const types = CONFIG.operationTypesByCategory[state.orgCategory] || [];
+  types.forEach(typ => {
+    const o = document.createElement("option");
+    o.value = typ;
+    o.textContent = t(typ.toLowerCase());
+    sel.appendChild(o);
+  });
+  if (!types.includes(state.opType)) state.opType = types[0] || "None";
+  sel.value = state.opType;
+}
+function fillNumberSelect(id, min, max, val) {
+  const sel = $(id);
+  sel.innerHTML = "";
+  for (let i = min; i <= max; i++) {
+    const o = document.createElement("option");
+    o.value = i; o.textContent = pad(i);
+    sel.appendChild(o);
+  }
+  sel.value = val;
+}
+function populateCustomDateTime() {
+  fillNumberSelect("customMonth", 1, 12, state.customMonth);
+  fillNumberSelect("customDay", 1, 31, state.customDay);
+  fillNumberSelect("customHour", 0, 23, state.customHour);
+  fillNumberSelect("customMinute", 0, 59, state.customMinute);
+}
+// Show the custom row only for "site"; enable/disable its fields via the checkbox.
+function updateCustomUI() {
+  $("rowCustom").hidden = state.orgCategory !== "site";
+  $("customEnable").checked = state.customEnabled;
+  $("customFields").classList.toggle("is-disabled", !state.customEnabled);
+  ["customText", "customMonth", "customDay", "customHour", "customMinute"]
+    .forEach(id => { $(id).disabled = !state.customEnabled; });
+}
+
+/* ====================== PRINT ======================= */
+function buildPrintLabels(frozen, n) {
+  const wrap = $("printArea");
+  wrap.innerHTML = "";
+  for (let i = 0; i < n; i++) {
+    const tmpl = $("previewLabel").cloneNode(true);
+    tmpl.removeAttribute("id");
+    // Update with frozen time (already set on the live preview) — but ensure we
+    // freeze the values directly on the clones in case of clock tick during print.
+    tmpl.querySelector(".date").textContent = fmtDate(frozen);
+    tmpl.querySelector(".time").textContent = fmtTime(frozen);
+    tmpl.querySelector(".group").textContent = state.opGroup;
+    // Op type already rendered via shared columns; reapply for safety:
+    const lt = tmpl.querySelector(".op-left");
+    const md = tmpl.querySelector(".op-mid");
+    const rt = tmpl.querySelector(".op-right");
+    const pos = CONFIG.opTypePosition[state.opType];
+    const lbl = pos ? t(state.opType.toLowerCase()) : "";
+    lt.textContent = pos === "left"  ? lbl : "";
+    md.textContent = pos === "mid"   ? lbl : "";
+    rt.textContent = pos === "right" ? lbl : "";
+    // Freeze custom lines (line 2 uses the frozen print time)
+    if (customActive()) {
+      const lines = tmpl.querySelectorAll(".cust-line");
+      if (lines.length === 2) {
+        lines[0].textContent = customLine1();
+        lines[1].textContent = customLine2(frozen);
+      }
+    }
+    tmpl.classList.toggle("mini", state.size === "mini");
+    wrap.appendChild(tmpl);
+  }
+}
+
+function doPrint() {
+  const n = clampCopies(state.copies);
+  const frozen = new Date();
+  renderPreview(frozen);            // freeze the visible preview to the moment of click
+  buildPrintLabels(frozen, n);
+
+  const unit = n === 1 ? t("copy") : t("copiesWord");
+  const opTypeLocalized = state.opType === "None" ? "" : t(state.opType.toLowerCase());
+  const typePart = opTypeLocalized ? ` — ${opTypeLocalized}` : "";
+  log(tf("logPrinted", { n, unit, type: typePart, group: state.opGroup }));
+
+  if (state.printer === "pdf") {
+    savePdf(frozen, n);
+  } else {
+    setPrintPageSize();
+    requestAnimationFrame(() => { window.print(); });
+  }
+}
+
+async function savePdf(frozen, n) {
+  if (typeof html2pdf === "undefined") {
+    // CDN didn't load — fall back to the system dialog so Print still does something.
+    setPrintPageSize();
+    requestAnimationFrame(() => { window.print(); });
+    return;
+  }
+
+  const isMini = state.size === "mini";
+  const pageW = isMini ? 4 : 6;
+  const pageH = isMini ? 3 : 4;
+
+  // Build labels with fully inline styles. Three pitfalls this avoids:
+  //  - html2canvas (inside html2pdf) doesn't reliably resolve `cqi` container-query
+  //    units, so the screen CSS that uses `clamp(... , Ncqi, ...)` collapses to 0.
+  //    We use explicit pixel font sizes instead.
+  //  - Class-based @media print overrides don't apply during html2canvas rendering
+  //    (it runs in screen mode), so we inline every style.
+  //  - html2pdf clones the source via outerHTML; if the source has `position: fixed`
+  //    that fixed-positioning is carried into html2pdf's own container and the clone
+  //    lands off-screen *of that container too*, producing a blank PDF. The wrapper
+  //    here is in normal flow; an outer `hider` (which is NOT passed to html2pdf)
+  //    keeps it off-screen on this page.
+  const hider = document.createElement("div");
+  hider.style.cssText =
+    `position: fixed; left: -10000px; top: 0; pointer-events: none;`;
+  const wrapper = document.createElement("div");
+  wrapper.style.cssText = `width: ${pageW}in; background: #fff;`;
+
+  const dateStr = fmtDate(frozen);
+  const timeStr = fmtTime(frozen);
+  const opPos = CONFIG.opTypePosition[state.opType];
+  const opTypeText = opPos ? t(state.opType.toLowerCase()) : "";
+  const opAlign =
+    opPos === "left"  ? "flex-start" :
+    opPos === "mid"   ? "center"     :
+    opPos === "right" ? "flex-end"   : "flex-start";
+
+  const opFs    = isMini ? 22 : 30;
+  const bigFs   = isMini ? 80 : 110;
+  const groupFs = isMini ? 22 : 26;
+  const custFs  = isMini ? 34 : 48;
+  const wmFs    = isMini ? 130 : 196;
+
+  const active = customActive();
+  const custL1 = active ? customLine1() : "";
+  const custL2 = active ? customLine2(frozen) : "";
+  const showWatermark = state.orgCategory === "site";
+
+  for (let i = 0; i < n; i++) {
+    const label = document.createElement("div");
+    label.style.cssText =
+      `position: relative; width: ${pageW}in; height: ${pageH}in; padding: 0.25in 0.35in; box-sizing: border-box;` +
+      ` background: #fff; color: #000; font-family: "Helvetica Neue", Arial, sans-serif;` +
+      ` display: grid; grid-template-rows: auto 1fr auto; overflow: hidden;`;
+
+    const opRow = document.createElement("div");
+    opRow.style.cssText =
+      `display: flex; justify-content: ${opAlign}; font-weight: 800;` +
+      ` font-size: ${opFs}px; line-height: 1;`;
+    opRow.textContent = opTypeText;
+    label.appendChild(opRow);
+
+    const center = document.createElement("div");
+    if (active) {
+      center.style.cssText =
+        `display: flex; flex-direction: column; align-items: center;` +
+        ` justify-content: center; gap: 0.18in; line-height: 1.1;`;
+      [custL1, custL2].forEach(txt => {
+        const lineEl = document.createElement("div");
+        lineEl.style.cssText = `font-weight: 800; font-size: ${custFs}px; letter-spacing: .01em; text-align: center;`;
+        lineEl.textContent = txt;
+        center.appendChild(lineEl);
+      });
+    } else {
+      center.style.cssText =
+        `display: flex; flex-direction: column; align-items: center;` +
+        ` justify-content: center; line-height: 1;`;
+      const dateEl = document.createElement("div");
+      dateEl.style.cssText = `font-weight: 800; font-size: ${bigFs}px; letter-spacing: .02em;`;
+      dateEl.textContent = dateStr;
+      const timeEl = document.createElement("div");
+      timeEl.style.cssText = `font-weight: 800; font-size: ${bigFs}px; letter-spacing: .02em;`;
+      timeEl.textContent = timeStr;
+      center.appendChild(dateEl);
+      center.appendChild(timeEl);
+    }
+    label.appendChild(center);
+
+    const groupEl = document.createElement("div");
+    groupEl.style.cssText = `text-align: right; font-weight: 800; font-size: ${groupFs}px;`;
+    groupEl.textContent = state.opGroup;
+    label.appendChild(groupEl);
+
+    if (showWatermark) {
+      const wm = document.createElement("div");
+      wm.style.cssText =
+        `position: absolute; left: 0.18in; bottom: 0.10in; font-weight: 900;` +
+        ` font-size: ${wmFs}px; line-height: .82; color: rgba(0,0,0,.15);`;
+      wm.textContent = "G";
+      label.appendChild(wm);
+    }
+
+    wrapper.appendChild(label);
+  }
+
+  hider.appendChild(wrapper);
+  document.body.appendChild(hider);
+  // Two frames so the browser fully applies styles + layout before html2canvas snapshots.
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+  const stamp = `${pad(frozen.getMonth()+1)}${pad(frozen.getDate())}_${pad(frozen.getHours())}${pad(frozen.getMinutes())}`;
+  const filename = `Timestamp_${state.opGroup}_${stamp}.pdf`;
+
+  try {
+    await html2pdf().set({
+      margin: 0,
+      filename,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false },
+      jsPDF: { unit: "in", format: [pageW, pageH], orientation: "landscape" },
+      pagebreak: { mode: [] }
+    }).from(wrapper).save();
+  } catch (err) {
+    log("PDF error: " + (err && err.message ? err.message : err));
+  } finally {
+    hider.remove();
+  }
+}
+
+function setPrintPageSize() {
+  let style = document.getElementById("dynamic-print-page");
+  if (!style) {
+    style = document.createElement("style");
+    style.id = "dynamic-print-page";
+    document.head.appendChild(style);
+  }
+  const size = state.size === "mini" ? "4in 3in" : "6in 4in";
+  style.textContent = `@media print { @page { size: ${size}; margin: 0; } }`;
+}
+
+function cancelQueue() {
+  log(t("logCancelled"));
+  setStatus("ready");
+}
+
+/* ====================== HELPERS ===================== */
+function clampCopies(n) {
+  n = parseInt(n, 10);
+  if (!Number.isFinite(n) || n < 1) return 1;
+  if (n > 25) return 25;
+  return n;
+}
+
+/* ====================== INIT ======================== */
+function bindEvents() {
+  // size toggle
+  $("sizeRegular").addEventListener("click", () => setSize("regular"));
+  $("sizeMini").addEventListener("click", () => setSize("mini"));
+
+  // language
+  $("langSelect").addEventListener("change", (e) => {
+    state.lang = e.target.value; saveSettings(); applyI18n();
+  });
+
+  // theme
+  $("themeToggle").addEventListener("click", () => {
+    state.theme = state.theme === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", state.theme);
+    saveSettings();
+  });
+
+  // printer
+  $("refreshPrinters").addEventListener("click", () => refreshPrinters());
+  $("printerSelect").addEventListener("change", (e) => {
+    state.printer = e.target.value; saveSettings();
+    log(tf("logSelectedPrinter", { name: e.target.options[e.target.selectedIndex].text }));
+  });
+
+  // copies
+  $("copies").addEventListener("input", (e) => {
+    if (e.target.value === "") {
+      state.copies = 1;
+      saveSettings();
+      return;
+    }
+    state.copies = clampCopies(e.target.value);
+    e.target.value = state.copies;
+    saveSettings();
+  });
+  $("copiesMinus").addEventListener("click", () => {
+    state.copies = clampCopies(state.copies - 1);
+    $("copies").value = state.copies; saveSettings();
+  });
+  $("copiesPlus").addEventListener("click", () => {
+    state.copies = clampCopies(state.copies + 1);
+    $("copies").value = state.copies; saveSettings();
+  });
+
+  // org category / op group / type
+  $("orgCategory").addEventListener("change", (e) => {
+    state.orgCategory = e.target.value;
+    populateOpGroup();
+    populateOpType();
+    updateCustomUI();
+    saveSettings(); renderPreview();
+  });
+  $("opGroup").addEventListener("change", (e) => {
+    state.opGroup = e.target.value; saveSettings(); renderPreview();
+  });
+  $("opType").addEventListener("change", (e) => {
+    state.opType = e.target.value; saveSettings(); renderPreview();
+  });
+
+  // custom content
+  $("customEnable").addEventListener("change", (e) => {
+    state.customEnabled = e.target.checked;
+    updateCustomUI(); saveSettings(); renderPreview();
+  });
+  $("customText").addEventListener("input", (e) => {
+    state.customText = e.target.value;
+    saveSettings(); renderPreview();
+  });
+  ["customMonth", "customDay", "customHour", "customMinute"].forEach(id => {
+    $(id).addEventListener("change", (e) => {
+      state[id] = parseInt(e.target.value, 10);
+      saveSettings(); renderPreview();
+    });
+  });
+
+  // actions
+  $("printBtn").addEventListener("click", doPrint);
+  $("cancelBtn").addEventListener("click", cancelQueue);
+
+  // open log by default on desktop
+  if (window.matchMedia("(min-width: 880px)").matches) {
+    $("logDetails").setAttribute("open", "");
+  }
+}
+
+function setSize(size) {
+  state.size = size;
+  $("sizeRegular").classList.toggle("is-active", size === "regular");
+  $("sizeMini").classList.toggle("is-active", size === "mini");
+  document.querySelector(".app").classList.toggle("size-mini", size === "mini");
+  document.querySelector(".app").classList.toggle("size-regular", size === "regular");
+  saveSettings();
+  renderPreview();
+}
+
+function applyInitialUi() {
+  document.documentElement.setAttribute("data-theme", state.theme || "light");
+  $("langSelect").value = state.lang;
+  $("copies").value = state.copies;
+  $("customText").value = state.customText || "";
+  $("verText").textContent = "v" + CONFIG.appVersion;
+  setSize(state.size || "regular");
+}
+
+function startClock() {
+  renderPreview();
+  setInterval(() => renderPreview(), 1000);
+}
+
+(function init() {
+  loadSettings();
+  // Custom date/time defaults to the current time on each load ("预填入当前时间")
+  const now = new Date();
+  state.customMonth = now.getMonth() + 1;
+  state.customDay = now.getDate();
+  state.customHour = now.getHours();
+  state.customMinute = now.getMinutes();
+  populateOrgCategory();
+  populateOpGroup();
+  populateOpType();
+  populateCustomDateTime();
+  applyInitialUi();
+  applyI18n();
+  bindEvents();
+  updateCustomUI();
+  startClock();
+  refreshPrinters({ withDelay: false });
+})();
+</script>
+
+
+</body></html>
